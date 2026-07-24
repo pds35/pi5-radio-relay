@@ -10,6 +10,7 @@ Run locally:
     uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload
 
 Endpoints:
+    GET  /                       -> HTML status dashboard (human-facing)
     GET  /stations              -> full station list (what the Pico fetches)
     GET  /stations/{station_id} -> single station
     POST /stations/{station_id} -> update a station (stream_url, name, notes)
@@ -25,7 +26,10 @@ from typing import Literal, Optional
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, HttpUrl
+
+from app.dashboard import render_dashboard
 
 # Overridable via env var so tests (and any future second deployment) can
 # point at a throwaway file instead of the real station list.
@@ -67,6 +71,12 @@ def find_station(data: dict, station_id: str) -> dict:
         if station["id"] == station_id:
             return station
     raise HTTPException(status_code=404, detail=f"Unknown station id: {station_id}")
+
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard():
+    """Human-facing status page. Not what the Pico talks to -- see /stations."""
+    return render_dashboard(load_data())
 
 
 @app.get("/health")

@@ -64,6 +64,31 @@ def client(tmp_path, monkeypatch):
     return TestClient(main.app)
 
 
+def test_dashboard_renders_html_with_all_stations(client):
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+    body = resp.text
+    assert "Alive Station" in body
+    assert "Dead Station" in body
+    assert "No URL Station" in body
+
+
+def test_dashboard_escapes_html_in_station_fields(client, monkeypatch):
+    """A station name/notes containing HTML shouldn't break the page or
+    allow injection -- this is rendered from our own data file, but the
+    data file is user-editable via POST, so treat it as untrusted input."""
+    resp = client.post(
+        "/stations/no_url_station",
+        json={"name": "<script>alert(1)</script>", "notes": "<b>bold</b>"},
+    )
+    assert resp.status_code == 200
+
+    resp = client.get("/")
+    assert "<script>alert(1)</script>" not in resp.text
+    assert "&lt;script&gt;" in resp.text
+
+
 def test_health_endpoint(client):
     resp = client.get("/health")
     assert resp.status_code == 200
