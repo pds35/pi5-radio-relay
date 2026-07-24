@@ -21,11 +21,11 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 # Overridable via env var so tests (and any future second deployment) can
 # point at a throwaway file instead of the real station list.
@@ -41,8 +41,11 @@ app = FastAPI(title="Pico Radio Station Relay", version="0.1.0")
 
 class StationUpdate(BaseModel):
     name: Optional[str] = None
-    stream_url: Optional[str] = None
-    format: Optional[str] = None
+    # HttpUrl only accepts well-formed http:// or https:// URLs -- this
+    # rejects garbage like "not a url", ftp:// links, or a bare hostname
+    # with no scheme, with a 422 before it ever reaches the data file.
+    stream_url: Optional[HttpUrl] = None
+    format: Optional[Literal["mp3", "aac", "hls", "dash"]] = None
     hls_only: Optional[bool] = None
     notes: Optional[str] = None
 
@@ -139,7 +142,7 @@ def update_station(station_id: str, update: StationUpdate):
     data = load_data()
     station = find_station(data, station_id)
 
-    for field, value in update.model_dump(exclude_unset=True).items():
+    for field, value in update.model_dump(exclude_unset=True, mode="json").items():
         station[field] = value
 
     # Any manual edit resets verification -- health check will re-confirm it.

@@ -104,6 +104,61 @@ def test_post_update_resets_verification(client):
     assert body["status"] == "candidate"  # has a URL now, so no longer "unresolved"
 
 
+def test_post_rejects_non_http_scheme(client):
+    resp = client.post(
+        "/stations/no_url_station",
+        json={"stream_url": "ftp://example.test/stream.mp3"},
+    )
+    assert resp.status_code == 422
+
+
+def test_post_rejects_garbage_url(client):
+    resp = client.post(
+        "/stations/no_url_station",
+        json={"stream_url": "definitely not a url"},
+    )
+    assert resp.status_code == 422
+
+
+def test_post_rejects_bare_hostname_without_scheme(client):
+    resp = client.post(
+        "/stations/no_url_station",
+        json={"stream_url": "media-ice.musicradio.com/ClassicFMMP3"},
+    )
+    assert resp.status_code == 422
+
+
+def test_post_rejects_unknown_format(client):
+    resp = client.post(
+        "/stations/no_url_station",
+        json={"format": "flac"},  # not in the allowed set
+    )
+    assert resp.status_code == 422
+
+
+def test_post_accepts_valid_https_url_and_format(client):
+    resp = client.post(
+        "/stations/no_url_station",
+        json={
+            "stream_url": "https://example.test/valid-stream.mp3",
+            "format": "mp3",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["stream_url"] == "https://example.test/valid-stream.mp3"
+    assert body["format"] == "mp3"
+
+
+def test_post_can_clear_stream_url_with_explicit_null(client):
+    # First set a URL, then explicitly clear it -- exclude_unset should
+    # still pick this up because the field was sent (as null), not omitted.
+    client.post("/stations/alive_station", json={"stream_url": "https://example.test/x.mp3"})
+    resp = client.post("/stations/alive_station", json={"stream_url": None})
+    assert resp.status_code == 200
+    assert resp.json()["stream_url"] is None
+
+
 def test_stream_health_check_marks_alive_dead_and_unresolved(client):
     with respx.mock(assert_all_called=True) as mock:
         mock.get("http://example.test/alive.mp3").mock(

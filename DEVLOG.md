@@ -4,6 +4,22 @@ Running record of what we build, why, and what we learned. Newest entry on top.
 
 ---
 
+## Entry 2 — Input validation on POST /stations/{id}
+
+**Goal:** stop garbage from ever reaching `data/stations.json` via the API — a typo'd URL, wrong scheme, or made-up format string used to save silently and only surface later when the Pico tried (and failed) to stream it.
+
+**What we did:**
+- `stream_url` is now `Optional[HttpUrl]` (pydantic) instead of a plain string. Rejects anything that isn't a well-formed `http://` or `https://` URL -- wrong scheme (`ftp://`), missing scheme (bare hostname), or plain nonsense all get a 422 before the handler even runs.
+- `format` is now `Optional[Literal["mp3", "aac", "hls", "dash"]]` instead of a free string -- typos or made-up formats (`"flac"`) get rejected too.
+- Handler serializes with `model_dump(mode="json")` so the validated `HttpUrl` object gets stored back as a plain string, not a pydantic object.
+- 6 new tests: reject bad scheme, reject garbage, reject schemeless URL, reject unknown format, accept a valid URL+format, and confirm you can still explicitly clear a `stream_url` back to `null`.
+
+**Outcome:** all 12 tests passed on the first run -- no surprise bugs this time, unlike Entry 1. Worth noting as a contrast: Entry 1's bug was in *our* routing logic; this change leans entirely on pydantic's already-battle-tested URL parser, so there was much less surface area for us to get wrong.
+
+**Scope note:** this only validates data coming in through the API (`POST /stations/{id}`). The 11 stations pre-loaded directly into `data/stations.json` at baseline were never validated this way and still aren't -- if one of those URLs turns out to be malformed, this layer won't catch it. `/stations/health` (the live check) is still the real source of truth for whether a URL actually works, not just whether it's shaped like one.
+
+---
+
 ## Entry 1 — Mocked test suite (respx)
 
 **Goal:** verify `/stations/health` logic without real internet access, per the gap flagged in Entry 0.
