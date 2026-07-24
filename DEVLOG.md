@@ -4,6 +4,37 @@ Running record of what we build, why, and what we learned. Newest entry on top.
 
 ---
 
+## Entry 7 — Verified the Entry 6 candidates: 1 alive, 1 dead
+
+**Result on the Pi 5, 2026-07-24:**
+- Heart UK: ✅ confirmed **alive**. 4th station now working (Classic FM, Capital FM, Smooth Radio, Heart UK).
+- Absolute Radio Country: ❌ confirmed **dead** -- and notably, `ConnectError`, not an HTTP error code. `absolute_80s` and `bbc_world_service` at least got a real response from a real server (500, 410) -- this one didn't connect at all, meaning the hostname itself is likely dead or was already stale in the 2023 source that provided it.
+
+**Score so far across all research methods used in this project:** Wikipedia infobox + mount-listing verification is now 4-for-4 (Classic FM, Capital FM, Smooth Radio, Heart UK all came from the same `media-ice.musicradio.com` family and all are alive). Aged blog/forum posts are more of a mixed bag -- worked for `absolute_80s`'s original discovery but that one later also died, and now this one died too. Pattern holding up: same-CDN-family candidates are much better bets than one-off mentions in old posts, regardless of how specific the post was.
+
+**Remaining unresolved:** Jazz FM (no candidate ever found) and Absolute Radio Country (candidate found but dead) -- 2 of 11 stations still need real URLs. 3 stations are HLS-only-blocked (BBC Radio 1/2/6 Music) and BBC World Service is confirmed dead. That leaves this project at **4 working stations out of 11**, with a clear path (find same-CDN-family URLs) for the remaining 2 that don't have a structural blocker.
+
+---
+
+## Entry 6 — Research session: 2 of 3 remaining stations found candidates
+
+**Goal:** resolve Jazz FM, Heart UK, Absolute Radio Country -- the 3 stations that have sat "unresolved" since the project began.
+
+**Dead ends checked and ruled out:** internetradiouk.com and radio.net (both large consumer-facing directories) stream through their own embedded/proxied players rather than exposing raw URLs -- confirmed by fetching Jazz FM's actual page on internetradiouk.com, which just links out to hellorayo.co.uk (the same Bauer app-based player already known to be a dead end). Neither directory is a source of usable stream URLs for a VS1053, regardless of how comprehensive their station list is.
+
+**What worked:** Wikipedia's own infobox for Heart UK links a "Webcast: MP3 Stream" -- not rendered as a clickable URL in the fetched content, but it prompted a targeted search that found the mount point confirmed directly against `media-ice.musicradio.com`'s own server listing. For Absolute Radio Country, a 2023 German radio blog post happened to name the station's Bauer sharp-stream.com mount specifically (unlike Jazz FM, where similar searches only surfaced sibling stations' URLs, never Jazz FM's own).
+
+**Result:**
+- Heart UK: `http://media-ice.musicradio.com/HeartUKMP3` -- same host as 3 already-confirmed-alive stations, good sign, not yet run through `/stations/health`
+- Absolute Radio Country: `http://edge-bauerall-01-gos2.sharp-stream.com/absolutecountry.aac` -- AAC not MP3, worth noting the VS1053 needs a plugin loaded to decode AAC (MP3/WMA/MIDI are native); not yet run through `/stations/health`
+- Jazz FM: still unresolved. Found the Bauer CDN's URL *pattern* from sibling stations but nothing naming Jazz FM specifically -- declined to guess a URL from the pattern and present it as a real candidate, since a wrong guess presented confidently is worse than an honest gap
+
+**Lesson:** the useful signal wasn't "search harder," it was recognizing which *kind* of source was worth pursuing. Listener-facing directories (however comprehensive) are the wrong shape of resource for this task regardless of which one you try, because they're built to embed a player, not disclose a URL. Wikipedia infoboxes and old blog posts/forum threads that happen to paste a real playlist are the right shape, because someone was doing exactly what we're doing (building a personal player) and left the evidence behind. Worth remembering for Jazz FM specifically -- it needs a similarly-shaped source, not a bigger directory.
+
+**Next step:** run `/stations/health` on the Pi against these 2 new candidates to get real verification, same as Entry 3.
+
+---
+
 ## Entry 5 — Sync process failure: data/stations.json committed empty
 
 **What happened:** while syncing Entry 3's results to the Pi, the file-copy instructions used a placeholder path (`/path/to/pi5-radio-relay.zip`) that got pasted literally instead of being swapped for the real path. `unzip -p <nonexistent-file> ... > target` fails to find anything, but the `>` redirect still runs and truncates `target` to empty -- silently. `git status` then correctly reports the file as "modified" (empty is different from the old content), which looks like success. It got committed and pushed to GitHub empty, and stayed that way through Entry 4's file sync too, until the dashboard's `GET /` route tried to `json.load()` an empty file and threw a clear 500.
