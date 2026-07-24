@@ -18,6 +18,7 @@ Endpoints:
 """
 
 import json
+import os
 import time
 from pathlib import Path
 from typing import Optional
@@ -26,7 +27,14 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "stations.json"
+# Overridable via env var so tests (and any future second deployment) can
+# point at a throwaway file instead of the real station list.
+DATA_PATH = Path(
+    os.environ.get(
+        "STATIONS_DATA_PATH",
+        Path(__file__).resolve().parent.parent / "data" / "stations.json",
+    )
+)
 
 app = FastAPI(title="Pico Radio Station Relay", version="0.1.0")
 
@@ -69,28 +77,11 @@ def get_stations():
     return load_data()
 
 
-@app.get("/stations/{station_id}")
-def get_station(station_id: str):
-    data = load_data()
-    return find_station(data, station_id)
-
-
-@app.post("/stations/{station_id}")
-def update_station(station_id: str, update: StationUpdate):
-    data = load_data()
-    station = find_station(data, station_id)
-
-    for field, value in update.model_dump(exclude_unset=True).items():
-        station[field] = value
-
-    # Any manual edit resets verification -- health check will re-confirm it.
-    station["verified"] = False
-    station["status"] = "candidate" if station.get("stream_url") else "unresolved"
-
-    save_data(data)
-    return station
-
-
+# NOTE: this must be registered before the /stations/{station_id} routes
+# below. FastAPI/Starlette matches routes in registration order, and
+# {station_id} would otherwise greedily match the literal path "health",
+# treating it as a station lookup and returning a 404 -- a real bug caught
+# by the test suite, see DEVLOG.md entry 1.
 @app.get("/stations/health")
 def check_all_streams():
     """
@@ -135,3 +126,25 @@ def check_all_streams():
 
     save_data(data)
     return {"checked": len(results), "results": results}
+
+
+@app.get("/stations/{station_id}")
+def get_station(station_id: str):
+    data = load_data()
+    return find_station(data, station_id)
+
+
+@app.post("/stations/{station_id}")
+def update_station(station_id: str, update: StationUpdate):
+    data = load_data()
+    station = find_station(data, station_id)
+
+    for field, value in update.model_dump(exclude_unset=True).items():
+        station[field] = value
+
+    # Any manual edit resets verification -- health check will re-confirm it.
+    station["verified"] = False
+    station["status"] = "candidate" if station.get("stream_url") else "unresolved"
+
+    save_data(data)
+    return station
