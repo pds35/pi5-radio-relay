@@ -1,0 +1,125 @@
+{
+  "stations": [
+    {
+      "id": "bbc_radio_1",
+      "name": "BBC Radio 1",
+      "stream_url": null,
+      "format": null,
+      "hls_only": true,
+      "verified": false,
+      "last_checked": null,
+      "status": "unresolved",
+      "notes": "BBC retired plain MP3/SHOUTcast in Oct 2023. Only HLS (.m3u8) and MPEG-DASH remain. A VS1053 cannot decode HLS directly (it needs a continuous MP3/AAC stream, not a segmented manifest). Needs either a transcoding relay on the Pi 5 (ffmpeg re-muxing HLS -> plain MP3/AAC on a local port) or drop this station from v1."
+    },
+    {
+      "id": "bbc_radio_2",
+      "name": "BBC Radio 2",
+      "stream_url": null,
+      "format": null,
+      "hls_only": true,
+      "verified": false,
+      "last_checked": null,
+      "status": "unresolved",
+      "notes": "Same HLS-only issue as BBC Radio 1."
+    },
+    {
+      "id": "bbc_radio_6music",
+      "name": "BBC Radio 6 Music",
+      "stream_url": null,
+      "format": null,
+      "hls_only": true,
+      "verified": false,
+      "last_checked": null,
+      "status": "unresolved",
+      "notes": "Same HLS-only issue as BBC Radio 1."
+    },
+    {
+      "id": "bbc_world_service",
+      "name": "BBC World Service",
+      "stream_url": "http://open.live.bbc.co.uk/mediaselector/5/select/version/2.0/mediaset/http-icy-mp3-a/vpid/bbc_world_service/format/pls.pls",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": false,
+      "last_checked": null,
+      "status": "candidate",
+      "notes": "Legacy MP3 mediaselector endpoint, reported as still reachable as of 2025 (unlike the domestic BBC stations). Returns a .pls playlist file, not a raw stream -- the Pico-side code needs to parse one line out of it, or the Pi 5 relay can resolve it once and cache the real MP3 URL. Needs a live test before relying on it."
+    },
+    {
+      "id": "classic_fm",
+      "name": "Classic FM",
+      "stream_url": "http://media-ice.musicradio.com/ClassicFMMP3",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": false,
+      "last_checked": null,
+      "status": "candidate",
+      "notes": "Global-owned. Direct Icecast MP3 mount, historically reliable. Not personally verified live -- check via /stations/health."
+    },
+    {
+      "id": "jazz_fm",
+      "name": "Jazz FM",
+      "stream_url": null,
+      "format": null,
+      "hls_only": false,
+      "verified": false,
+      "last_checked": null,
+      "status": "unresolved",
+      "notes": "Bauer-owned. Still broadcasting as of 2026, but no direct Icecast/MP3 mount was found -- current Bauer stations mostly push listeners through the Rayo player / app rather than a plain stream URL. Needs manual lookup (browser dev tools, Network tab, filter for media on planetradio.co.uk/jazz-fm)."
+    },
+    {
+      "id": "heart_uk",
+      "name": "Heart UK",
+      "stream_url": null,
+      "format": null,
+      "hls_only": false,
+      "verified": false,
+      "last_checked": null,
+      "status": "unresolved",
+      "notes": "Global-owned. Only regional Heart mounts were confirmed (e.g. HeartTorbayMP3, Heart80sMP3 on icecast.thisisdax.com) -- the flagship national feed's current mount name wasn't confirmed. Try icecast.thisisdax.com/HeartUKMP3 as a guess, or pick a specific regional Heart station instead."
+    },
+    {
+      "id": "capital_fm",
+      "name": "Capital FM",
+      "stream_url": "http://media-ice.musicradio.com/CapitalMP3",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": false,
+      "last_checked": null,
+      "status": "candidate",
+      "notes": "Global-owned. Direct Icecast MP3 mount found in multiple sources. Not personally verified live."
+    },
+    {
+      "id": "absolute_80s",
+      "name": "Absolute Radio 80s",
+      "stream_url": "http://icy-e-bab-04-cr.sharp-stream.com/absolute80s.mp3",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": false,
+      "last_checked": null,
+      "status": "candidate",
+      "notes": "Bauer-owned. Sharp-stream.com MP3 mount, seen referenced as recently as 2022. Not personally verified live -- Bauer rotates CDN hostnames occasionally."
+    },
+    {
+      "id": "smooth_radio",
+      "name": "Smooth Radio",
+      "stream_url": "http://media-ice.musicradio.com/SmoothUKMP3",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": false,
+      "last_checked": null,
+      "status": "candidate",
+      "notes": "Global-owned. Direct Icecast MP3 mount found in multiple sources. Not personally verified live."
+    },
+    {
+      "id": "absolute_country",
+      "name": "Absolute Radio Country",
+      "stream_url": null,
+      "format": null,
+      "hls_only": false,
+      "verified": false,
+      "last_checked": null,
+      "status": "unresolved",
+      "notes": "Bauer-owned (rebranded from Country Hits Radio in 2021, same station). No direct MP3/Icecast mount was found in research -- likely needs the same dev-tools lookup as Jazz FM."
+    }
+  ]
+}

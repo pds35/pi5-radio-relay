@@ -1,0 +1,16 @@
+# Add this service block into your existing Pi 5 docker-compose.yml
+# (the one that already runs Immich/MQTT/etc). Adjust the build context
+# path to wherever you place this project on the Pi 5.
+
+services:
+  radio-station-relay:
+    build: ./pi5-radio-relay
+    container_name: radio-station-relay
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      # Bind-mount the data dir so edits/health-check results survive
+      # container rebuilds, and so you can hand-edit stations.json directly
+      # over SSH if you ever want to.
+      - ./pi5-radio-relay/data:/srv/data
