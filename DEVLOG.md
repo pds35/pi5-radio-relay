@@ -1,7 +1,27 @@
 # Dev Log — Pi 5 Radio Station Relay
 
 Running record of what we build, why, and what we learned. Newest entry on top.
+## Entry 8 — HLS blocker resolved: ffmpeg + Icecast relay PoC (BBC Radio 2)
+**Goal:** Entry 7 left 3 stations (BBC Radio 1/2/6 Music) marked "HLS-only-blocked" — the Pico can't decode HLS directly. Proved whether a Pi-side relay can unblock them by converting HLS to plain HTTP before it ever reaches the Pico.
 
+**What we did:**
+- Installed ffmpeg + icecast2 on the Pi 5, bound Icecast to the LAN IP only.
+- Found BBC Radio 2's real HLS manifest via the `lsn.lv` redirector (needs a browser-like `User-Agent`; a bare `curl -I` gets 401/404 and looks like a dead URL until you add the header — same "check the boring explanation first" lesson as Entry 1).
+- ffmpeg relays the manifest into Icecast as plain MP3: `-user_agent ... -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -i "<manifest>" -avoid_negative_ts make_zero -fflags +genpts -acodec libmp3lame -ab 96k -f mp3 icecast://source:***@<lan-ip>:8000/radio2`
+- Wrapped as a systemd service (`Restart=always`) so it survives without a live terminal.
+
+**Outcome — first version crash-looped every 60-90s:**
+Icecast's default `source-timeout` was too tight for an occasional stall caused by a DTS/timestamp discontinuity in the HLS stream (`Application provided invalid, non monotonically increasing dts`). Fixed with `-avoid_negative_ts make_zero -fflags +genpts` on ffmpeg plus `source-timeout: 30` in icecast.xml. Also self-inflicted a ~60-restart-in-a-minute spiral mid-fix: a pasted edit split `-avoid_negative_ts` into two args, pointing `-i` at a nonexistent file called `-avoid`.
+
+**Current state:** stable since the fix — one isolated `Broken pipe` restart after ~90 minutes clean, auto-recovered by systemd in 5s, none since. 5-minute soak-test logging in progress, `NRestarts=0` since that one event.
+
+**Significance for the station count:** this doesn't just prove a PoC — it's a candidate fix for the 3 HLS-blocked stations from Entry 7. If BBC Radio 1 and 6 Music work the same way (same CDN family, same manifest pattern, just different `station=` param), the project could go from 4/11 to potentially 7/11 working stations, once each is relayed the same way. BBC World Service is separately confirmed dead (Entry 7) so stays excluded regardless.
+
+**Not yet done:**
+- Only Radio 2 relayed so far — Radio 1 and 6 Music not yet tried against this same pipeline (should just be a `station=` swap in the manifest URL).
+- Icecast itself has no equivalent resilience wrapper beyond the OS package default — only the ffmpeg relay is wrapped in `Restart=always` so far.
+- Full 24h soak test still running as of this entry.
+- Not yet decided how this relay fits architecturally alongside the existing FastAPI station-list service (Entry 0) — likely as a sibling component (`relay/`) rather than inside it, but not yet wired together or reflected in `docker-compose.snippet.yml`.
 ---
 
 ## Entry 7 — Verified the Entry 6 candidates: 1 alive, 1 dead

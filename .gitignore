@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 *.tmp
 .pytest_cache/
+
+# Secrets - Icecast/relay credentials, never commit real versions
+icecast.xml
+radio-relay-*.service
+!relay/*.example
