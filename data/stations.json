@@ -91,13 +91,13 @@
     {
       "id": "absolute_80s",
       "name": "Absolute Radio 80s",
-      "stream_url": "http://icy-e-bab-04-cr.sharp-stream.com/absolute80s.mp3",
+      "stream_url": "http://edge-bauerabsolute-05-gos2.sharp-stream.com/absolute80s.mp3?aw_0_1st.skey=1785055397&aw_0_1st.playerid=BMUK_RPi",
       "format": "mp3",
       "hls_only": false,
-      "verified": false,
-      "last_checked": "2026-07-24 (Pi 5, real network)",
-      "status": "dead: http_500",
-      "notes": "Confirmed DEAD on the Pi 5 (2026-07-24) -- server returns HTTP 500. This mount was last seen referenced in 2022; likely stale/decommissioned. Needs a fresh URL lookup (browser dev tools on absolute80s.com or hellorayo.co.uk/absolute-80s, Network tab, filter for media)."
+      "verified": true,
+      "last_checked": "2026-07-26 (Pi 5, real network)",
+      "status": "alive",
+      "notes": "Previous mount (icy-e-bab-04-cr.sharp-stream.com) confirmed dead 2026-07-24. New working mount found via radiofeeds.co.uk's bauerflash.pls redirector, resolved with curl -A \"VLC/3.0.18 LibVLC/3.0.18\". URL includes a query-string session key/player-id (aw_0_1st.skey, aw_0_1st.playerid) -- worth re-checking periodically in case this expires or rotates, unlike the plain media-ice.musicradio.com mounts which have no such parameters."
     },
     {
       "id": "smooth_radio",
