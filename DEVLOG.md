@@ -2,6 +2,19 @@
 
 Running record of what we build, why, and what we learned. Newest entry on top.
 
+## Entry 12 — Remote access via Tailscale + web service hardened to systemd
+**Goal:** check the player page from away from home, safely, without exposing anything to the public internet.
+
+**What we did:**
+- Installed Tailscale on the Pi 5 (`curl -fsSL https://tailscale.com/install.sh | sh`, `sudo tailscale up`), joined the same tailnet as an iPhone already running the Tailscale app. No ports opened to the public internet -- private mesh network only, reachable only from devices explicitly logged into the same account.
+- Pi's Tailscale address: `100.118.84.110`. Player page reachable at `http://100.118.84.110:8090/player` from anywhere the phone has any internet connection, not just home WiFi.
+
+**Hit the same "foreground process dies with the terminal" issue as the BBC relay (Entry 8):** uvicorn had only been started manually with `nohup` in a terminal session, which had since ended -- `/health` returned nothing over Tailscale until we noticed and restarted it. Fixed properly this time by wrapping it in a systemd service (`pi5-radio-web.service`, `Restart=always`, `enabled` for boot survival) rather than repeating the same fragile pattern.
+
+**Verified:** confirmed working from the phone over Tailscale, both immediately after the systemd handover and via a plain curl health check.
+
+**Not yet done:** the Icecast BBC relay mount (port 8000) isn't yet exposed over Tailscale the same way -- only the web player (port 8090) is tested so far. Worth checking whether the Pico's own eventual station-list sync should also go through Tailscale, or stay LAN-only (Tailscale adds a dependency the Pico doesn't currently need, since it's always at home).
+
 ## Entry 11 — Web player with station picker and live "now playing" info
 **Goal:** let a human pick from the 10 confirmed stations and play them in-browser, with live track info, building on the ICY metadata parsing proven in Entry 9's PoC script.
 
