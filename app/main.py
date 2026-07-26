@@ -11,8 +11,10 @@ Run locally:
 
 Endpoints:
     GET  /                       -> HTML status dashboard (human-facing)
+    GET  /player                 -> HTML station picker + audio playback
     GET  /stations              -> full station list (what the Pico fetches)
     GET  /stations/{station_id} -> single station
+    GET  /stations/{station_id}/nowplaying -> current track info (ICY metadata)
     POST /stations/{station_id} -> update a station (stream_url, name, notes)
     GET  /stations/health       -> re-check every stream URL, update status
     GET  /health                -> service liveness check
@@ -30,6 +32,8 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, HttpUrl
 
 from app.dashboard import render_dashboard
+from app.nowplaying import fetch_now_playing
+from app.player import render_player
 
 # Overridable via env var so tests (and any future second deployment) can
 # point at a throwaway file instead of the real station list.
@@ -45,9 +49,6 @@ app = FastAPI(title="Pico Radio Station Relay", version="0.1.0")
 
 class StationUpdate(BaseModel):
     name: Optional[str] = None
-    # HttpUrl only accepts well-formed http:// or https:// URLs -- this
-    # rejects garbage like "not a url", ftp:// links, or a bare hostname
-    # with no scheme, with a 422 before it ever reaches the data file.
     stream_url: Optional[HttpUrl] = None
     format: Optional[Literal["mp3", "aac", "hls", "dash"]] = None
     hls_only: Optional[bool] = None
@@ -63,7 +64,7 @@ def save_data(data: dict) -> None:
     tmp_path = DATA_PATH.with_suffix(".json.tmp")
     with tmp_path.open("w") as f:
         json.dump(data, f, indent=2)
-    tmp_path.replace(DATA_PATH)  # atomic-ish swap so the Pico never reads a half-written file
+    tmp_path.replace(DATA_PATH)
 
 
 def find_station(data: dict, station_id: str) -> dict:
@@ -79,6 +80,12 @@ def dashboard():
     return render_dashboard(load_data())
 
 
+@app.get("/player", response_class=HTMLResponse)
+def player():
+    """Station picker + audio playback + now-playing info."""
+    return render_player(load_data())
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -90,18 +97,11 @@ def get_stations():
     return load_data()
 
 
-# NOTE: this must be registered before the /stations/{station_id} routes
-# below. FastAPI/Starlette matches routes in registration order, and
-# {station_id} would otherwise greedily match the literal path "health",
-# treating it as a station lookup and returning a 404 -- a real bug caught
-# by the test suite, see DEVLOG.md entry 1.
 @app.get("/stations/health")
 def check_all_streams():
     """
     Hit every station's stream_url with a short GET (streamed, aborted after
-    first bytes) to confirm it's alive. Updates status/verified/last_checked
-    in place and persists the result, so /stations reflects the latest check
-    without re-running it on every Pico sync.
+    first bytes) to confirm it's alive.
     """
     data = load_data()
     results = []
@@ -118,8 +118,6 @@ def check_all_streams():
             try:
                 with client.stream("GET", url) as resp:
                     if resp.status_code < 400:
-                        # Pull a small chunk to confirm it's actually audio, not just
-                        # a 200 on an empty/redirect page.
                         got_bytes = False
                         for chunk in resp.iter_bytes():
                             if chunk:
@@ -147,6 +145,16 @@ def get_station(station_id: str):
     return find_station(data, station_id)
 
 
+@app.get("/stations/{station_id}/nowplaying")
+def station_now_playing(station_id: str):
+    data = load_data()
+    station = find_station(data, station_id)
+    url = station.get("stream_url")
+    if not url:
+        return {"supported": False, "title": None}
+    return fetch_now_playing(url)
+
+
 @app.post("/stations/{station_id}")
 def update_station(station_id: str, update: StationUpdate):
     data = load_data()
@@ -155,7 +163,6 @@ def update_station(station_id: str, update: StationUpdate):
     for field, value in update.model_dump(exclude_unset=True, mode="json").items():
         station[field] = value
 
-    # Any manual edit resets verification -- health check will re-confirm it.
     station["verified"] = False
     station["status"] = "candidate" if station.get("stream_url") else "unresolved"
 

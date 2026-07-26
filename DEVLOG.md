@@ -2,6 +2,21 @@
 
 Running record of what we build, why, and what we learned. Newest entry on top.
 
+## Entry 11 — Web player with station picker and live "now playing" info
+**Goal:** let a human pick from the 10 confirmed stations and play them in-browser, with live track info, building on the ICY metadata parsing proven in Entry 9's PoC script.
+
+**What we built:**
+- `app/nowplaying.py` -- single-shot ICY metadata fetcher. Opens a fresh connection per request (not persistent/background), requests `Icy-MetaData: 1`, reads past exactly `icy-metaint` bytes of audio, extracts the `StreamTitle` from the metadata block via regex, and closes. Reuses the buffer-accounting fix from the earlier PoC script (leftover bytes tracked correctly across reads, so audio data never gets misread as metadata text).
+- `app/player.py` -- server-rendered picker page at `/player`. Station buttons built from `stations.json` (only `status: alive` ones shown), a native `<audio>` element for playback (browser connects directly to the station URL -- the Pi doesn't proxy audio, consistent with the whole direct-streaming architecture), and a JS poller hitting `/stations/{id}/nowplaying` every 10s.
+- New route in `main.py`: `GET /stations/{station_id}/nowplaying`, returns `{"supported": bool, "title": str|None}`.
+
+**Hit a real deployment snag:** pasting the updated `main.py` via a large heredoc over SSH got silently truncated mid-paste (bash sat waiting for the terminator that never arrived) -- not a code bug, a terminal/paste-buffer limit with very large blocks. Worked around it by moving the file via the browser download + `mv` from `~/Downloads` instead of a giant paste. Worth remembering for future large-file edits: heredoc is reliable for short/medium content (proven repeatedly today), but full-file rewrites of 150+ lines are better done as a downloaded file moved into place, or split into smaller heredoc chunks.
+
+**Verified:** `/stations/health` re-confirms all 10 stations alive independently of the player. `/stations/classic_fm/nowplaying` returned a real, current track title. Manually tested in-browser at `/player` -- all 10 stations play correctly, switching between them works, now-playing text updates on schedule.
+
+**Not yet done:** no visual distinction yet for stations without ICY support vs. ones that are just between metadata updates. No handling yet for what happens if a station's `stream_url` changes while it's mid-playback (the picker always uses whatever's in `stations.json` at page-load time). Player isn't linked from the main dashboard yet.
+
+
 ## Entry 10 — Reached 10 confirmed stations via CDN-family mount guessing
 **Goal:** get to 10 working stations without touching the BBC/HLS relay (shelved pending the watchdog fix) or chasing Jazz FM further (confirmed dead-end in Entry 9).
 
