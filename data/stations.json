@@ -113,13 +113,13 @@
     {
       "id": "absolute_country",
       "name": "Absolute Radio Country",
-      "stream_url": "http://edge-bauerall-01-gos2.sharp-stream.com/absolutecountry.aac",
-      "format": "aac",
+      "stream_url": "http://edge-bauerabsolute-05-gos2.sharp-stream.com/absolutecountry.mp3?aw_0_1st.skey=1785055940&aw_0_1st.playerid=BMUK_RPi",
+      "format": "mp3",
       "hls_only": false,
-      "verified": false,
-      "last_checked": "2026-07-24 (Pi 5, real network)",
-      "status": "dead: error: ConnectError",
-      "notes": "Confirmed DEAD on the Pi 5 (2026-07-24) -- connection failed outright (not even an HTTP error response), unlike absolute_80s/bbc_world_service which at least responded with a real status code. Likely a dead hostname or the source (a 2023 blog post) was already stale when found. Still need a genuine current URL for this station."
+      "verified": true,
+      "last_checked": "2026-07-26 (Pi 5, real network)",
+      "status": "alive",
+      "notes": "Previous mount (edge-bauerall-01-gos2.sharp-stream.com/absolutecountry.aac) confirmed dead 2026-07-24 (ConnectError). New working mp3 mount found via radiofeeds.co.uk's bauerflash.pls redirector, same method as absolute_80s. URL includes a query-string session key/player-id -- worth re-checking periodically in case it expires or rotates. Jazz FM tried via the same redirector pattern (station=jazzfm-mp3) but returned 404 on two separate fresh keys -- confirms Jazz FM has no live direct mount right now, not a token-expiry issue; stays unresolved, only the Rayo app player is available."
     }
   ]
 }

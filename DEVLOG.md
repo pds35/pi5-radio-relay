@@ -1,7 +1,23 @@
 # Dev Log — Pi 5 Radio Station Relay
 
 Running record of what we build, why, and what we learned. Newest entry on top.
+
+## Entry 9 — Rescued 2 dead stations via radiofeeds.co.uk's bauerflash.pls redirector
+**Goal:** find real URLs for the stations still marked dead/unresolved after Entry 7 (Jazz FM, Absolute Radio Country, Absolute Radio 80s).
+
+**Method:** same redirector-resolution technique used for BBC's `lsn.lv` in Entry 8 — `radiofeeds.co.uk` links to `http://www.radiofeeds.net/playlists/bauerflash.pls?station=<name>-mp3`, which needs a browser-like User-Agent (`curl -A "VLC/3.0.18 LibVLC/3.0.18"`) and resolves to a `.pls` playlist containing the real, current stream URL.
+
+**Results:**
+- **Absolute Radio 80s**: old mount dead, new mount (`edge-bauerabsolute-05-gos2.sharp-stream.com/absolute80s.mp3`) confirmed alive, verified with real audio bytes.
+- **Absolute Radio Country**: old `.aac` mount dead (ConnectError), new `.mp3` mount on the same edge-bauerabsolute-05-gos2 server confirmed alive, verified with real audio bytes.
+- **Jazz FM**: tried the same pattern (`jazzfm-mp3`) — resolved to a plausible-looking URL, but got `404` on two separate fresh session keys. This rules out token expiry as the cause; the mount genuinely doesn't exist. Stays unresolved — Jazz FM really has moved fully behind the Rayo app player, confirming the Entry 6 finding rather than overturning it.
+
+**New URLs both include a query-string session key/player-id** (`aw_0_1st.skey`, `aw_0_1st.playerid`) unlike the plain `media-ice.musicradio.com` mounts (Classic FM/Heart/Capital/Smooth), which have no such parameters. Worth treating these two as slightly less durable and re-verifying periodically in case the key format changes or requires per-session freshness.
+
+**Station count: 6 of 11 confirmed working** (up from 4), all direct-stream, no Pi relay needed. Remaining: 3 BBC stations (need the HLS relay from Entry 8, currently shelved pending a watchdog fix) + Jazz FM (no viable mount found) + BBC World Service (confirmed dead, separate issue).
+
 ## Entry 8 — HLS blocker resolved: ffmpeg + Icecast relay PoC (BBC Radio 2)
+
 **Goal:** Entry 7 left 3 stations (BBC Radio 1/2/6 Music) marked "HLS-only-blocked" — the Pico can't decode HLS directly. Proved whether a Pi-side relay can unblock them by converting HLS to plain HTTP before it ever reaches the Pico.
 
 **What we did:**
