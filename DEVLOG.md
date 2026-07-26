@@ -1,5 +1,46 @@
 # Dev Log — Pi 5 Radio Station Relay
 
+## Entry 13 — Pico display polls /nowplaying, fixes a socket leak
+
+**Goal:** get the Pico's bench-test square display (ST7735, framebuf-based driver) showing live
+"now playing" info, reusing the Pi 5's existing `/stations/{id}/nowplaying` endpoint (Entry 11)
+rather than duplicating ICY metadata parsing on the Pico itself.
+
+**What we built:**
+- `pico/now_playing.py` -- connects WiFi, then polls `GET /stations/classic_fm/nowplaying`
+  over plain HTTP every 10s, parses the JSON response, and redraws the display only when the
+  title actually changes.
+- Deliberately thin on the Pico side: no ICY parsing, no persistent stream connection -- just a
+  small HTTP client hitting the endpoint that already works, consistent with keeping heavy lifting
+  on the Pi 5 and the Pico's job simple.
+
+**Bug found and fixed:** first version connected fine on the very first poll, then timed out
+(`ETIMEDOUT`) on every single poll after that. Ruled out the server first -- `curl` against
+`/nowplaying` from the Pi 5 itself was consistently fast (100-250ms) even hammered repeatedly,
+so the problem wasn't Classic FM being slow or the BBC relay stealing resources. Root cause was
+on the Pico side: `fetch_nowplaying()` only wrapped the `recv()` loop in `try/finally`, not the
+`connect()` call -- so a slow or failed connect could leak the socket with no cleanup. MicroPython's
+lwIP socket pool on the Pico is small, and repeated open/close cycles every 10s (plus `Connection:
+close` leaving sockets briefly in TIME_WAIT) exhausted it fast enough to explain "works once, fails
+forever after."
+
+**Fix:** moved `connect()` inside the `try/finally` so every code path guarantees `s.close()`,
+and added an explicit `gc.collect()` right after, to help release the freed socket promptly rather
+than lingering. Bumped the timeout from 5s to 8s as a secondary safety margin.
+
+**Verified:** ran for several minutes straight with zero timeouts, correctly picking up two real
+track changes live (Clarke/Purcell -> Kamen) on both the console and the physical display.
+
+**Lesson:** "worked once, then failed every time after" is a strong signal for a resource leak
+(sockets, file handles, memory) rather than a network or server issue -- confirmed here by timing
+the server independently first before looking at the client. Worth remembering for the eventual
+VS1053 audio-streaming code too, since that will hold a socket open far longer per station and any
+leak there would be more painful to debug than this quick metadata poll.
+
+**Not yet done:** station is still hardcoded to `classic_fm` -- no station-switching wired up yet
+(that's still blocked on the rotary encoders arriving). No visual distinction on-screen yet between
+"poll failed" and "station has no metadata support" (both currently just show a generic error line).
+
 Running record of what we build, why, and what we learned. Newest entry on top.
 
 ## Entry 12 — Remote access via Tailscale + web service hardened to systemd
