@@ -120,6 +120,50 @@
       "last_checked": "2026-07-26 (Pi 5, real network)",
       "status": "alive",
       "notes": "Previous mount (edge-bauerall-01-gos2.sharp-stream.com/absolutecountry.aac) confirmed dead 2026-07-24 (ConnectError). New working mp3 mount found via radiofeeds.co.uk's bauerflash.pls redirector, same method as absolute_80s. URL includes a query-string session key/player-id -- worth re-checking periodically in case it expires or rotates. Jazz FM tried via the same redirector pattern (station=jazzfm-mp3) but returned 404 on two separate fresh keys -- confirms Jazz FM has no live direct mount right now, not a token-expiry issue; stays unresolved, only the Rayo app player is available."
+    },
+    {
+      "id": "smooth_country",
+      "name": "Smooth Country",
+      "stream_url": "http://media-ice.musicradio.com/SmoothCountryMP3",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": true,
+      "last_checked": "2026-07-26 (Pi 5, real network)",
+      "status": "alive",
+      "notes": "Found by guessing mount names on the media-ice.musicradio.com CDN family (same host as Classic FM/Heart/Capital/Smooth, 4-for-4 reliable so far). Confirmed alive with real audio bytes."
+    },
+    {
+      "id": "lbc",
+      "name": "LBC",
+      "stream_url": "http://media-ice.musicradio.com/LBCUKMP3",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": true,
+      "last_checked": "2026-07-26 (Pi 5, real network)",
+      "status": "alive",
+      "notes": "Talk/news station, same CDN family as the other Global-owned stations. Confirmed alive with real audio bytes. Note: LBCLondonMP3 also returned 200 -- may be a duplicate/regional variant of the same feed, not yet checked which is preferred."
+    },
+    {
+      "id": "radio_x",
+      "name": "Radio X",
+      "stream_url": "http://media-ice.musicradio.com/RadioXUKMP3",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": true,
+      "last_checked": "2026-07-26 (Pi 5, real network)",
+      "status": "alive",
+      "notes": "Rock format, same CDN family as the other Global-owned stations. Confirmed alive with real audio bytes."
+    },
+    {
+      "id": "smooth_chill",
+      "name": "Smooth Chill",
+      "stream_url": "http://media-ice.musicradio.com/SmoothChillMP3",
+      "format": "mp3",
+      "hls_only": false,
+      "verified": true,
+      "last_checked": "2026-07-26 (Pi 5, real network)",
+      "status": "alive",
+      "notes": "Same CDN family as the other Global-owned stations. Confirmed alive with real audio bytes."
     }
   ]
 }

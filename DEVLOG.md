@@ -2,6 +2,20 @@
 
 Running record of what we build, why, and what we learned. Newest entry on top.
 
+## Entry 10 — Reached 10 confirmed stations via CDN-family mount guessing
+**Goal:** get to 10 working stations without touching the BBC/HLS relay (shelved pending the watchdog fix) or chasing Jazz FM further (confirmed dead-end in Entry 9).
+
+**Method:** the `media-ice.musicradio.com` CDN family (Global-owned: Classic FM, Heart, Capital, Smooth) has been 100% reliable so far, and Global runs many more stations on the same infrastructure. Guessed mount names following the established naming convention (`<Name>MP3`) and tested in batches with a quick curl status-code loop before verifying real ones with actual audio bytes.
+
+**Results — 6 new stations found, 4 added:**
+- Smooth Country, LBC, Radio X, Smooth Chill -- all confirmed alive with real audio bytes, added to stations.json.
+- GoldMP3 timed out (000) and GoldRadioMP3/CapitalXTRAMP3 404'd -- Gold and Capital Xtra need different mount names, not yet found.
+- LBCLondonMP3 also returned 200 alongside LBCUKMP3 -- likely a duplicate/regional variant; only LBCUKMP3 added for now, worth checking later if they're actually different feeds.
+
+**Station count: 10 of 15 confirmed working** (original 11 + 4 newly discovered). Genre spread now includes classical, talk (LBC), rock (Radio X), on top of the existing pop/hits/chill/country stations.
+
+**Not yet done:** Gold, Capital Xtra, and other Global/Bauer stations likely also exist on the same CDN family with a different naming pattern -- worth another guessing pass if more stations are wanted later. BBC (3 stations) and Jazz FM remain the only unresolved originals.
+
 ## Entry 9 — Rescued 2 dead stations via radiofeeds.co.uk's bauerflash.pls redirector
 **Goal:** find real URLs for the stations still marked dead/unresolved after Entry 7 (Jazz FM, Absolute Radio Country, Absolute Radio 80s).
 
