@@ -8,6 +8,12 @@ Wiring (SPI0):
   GND -> GND      SCL -> GP18 (SCK)     RES -> GP21
   VCC -> 3V3      SDA -> GP19 (MOSI)    DC  -> GP20
   CS  -> GP17     BL  -> GP22
+
+Hardening notes (added after repeated ECONNRESET on rapid poll cycles):
+  - CYW43 WiFi driver doesn't always fully release a socket immediately
+    after close(); a short delay after close() gives it time to settle.
+  - fetch_nowplaying() is retried once on OSError before the loop reports
+    a failure, since a single transient reset shouldn't flip the display.
 """
 
 import network
@@ -26,6 +32,8 @@ PI5_PORT = 8090
 STATION_ID = "classic_fm"          # one of the 10 confirmed stations
 STATION_LABEL = "CLASSIC FM"       # display label, since the endpoint only returns title
 POLL_SECONDS = 10
+SOCKET_RELEASE_DELAY_MS = 200      # let CYW43 driver release the socket after close()
+RETRY_DELAY_MS = 300               # pause before the single retry attempt
 
 # ---- display pins ----
 SCK_PIN, MOSI_PIN = 18, 19
@@ -163,11 +171,27 @@ def fetch_nowplaying():
         # so a slow/failed attempt never leaks the socket
         s.close()
         gc.collect()
+        # CYW43 driver doesn't always release the socket immediately on
+        # close() — a short pause here avoids ECONNRESET on the *next*
+        # connection attempt when polling on a tight interval.
+        time.sleep_ms(SOCKET_RELEASE_DELAY_MS)
 
     header_part, _, body = response.partition(b"\r\n\r\n")
     if not body:
         raise ValueError("Empty response body")
     return json.loads(body)
+
+
+def fetch_nowplaying_with_retry():
+    """Try once, and on a transient OSError (e.g. ECONNRESET) try once
+    more after a short pause before letting the caller treat it as a
+    real failure. A single dropped connection shouldn't flip the display."""
+    try:
+        return fetch_nowplaying()
+    except OSError as e:
+        print("Poll error (retrying once):", e)
+        time.sleep_ms(RETRY_DELAY_MS)
+        return fetch_nowplaying()
 
 
 def parse_title(title):
@@ -190,22 +214,27 @@ def main():
         return
 
     last_title = None
+    was_failing = False  # tracks whether the previous poll failed, so a
+                          # recovered poll always redraws even if the
+                          # track title is unchanged from before the outage
 
     while True:
         try:
-            data = fetch_nowplaying()
+            data = fetch_nowplaying_with_retry()
             if data.get("supported") and data.get("title"):
                 title = data["title"]
-                if title != last_title:
+                if title != last_title or was_failing:
                     last_title = title
                     artist, track = parse_title(title)
                     print("Now playing:", title)
                     draw_now_playing(tft, STATION_LABEL, track or title, artist)
             else:
                 draw_now_playing(tft, STATION_LABEL, "(no metadata)", "")
+            was_failing = False
         except Exception as e:
-            print("Poll error:", e)
+            print("Poll failed:", e)
             draw_now_playing(tft, STATION_LABEL, "Poll failed", "", str(e)[:16])
+            was_failing = True
 
         time.sleep(POLL_SECONDS)
 
