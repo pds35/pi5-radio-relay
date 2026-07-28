@@ -1,5 +1,64 @@
 # Dev Log — Pi 5 Radio Station Relay
 
+## Entry 14 — Pico display polling hardened; GUI start/stop working
+
+**Date:** 2026-07-28
+
+### Thonny/mpremote port lock
+- Diagnosed a recurring Thonny "Device is busy or does not respond" error: caused
+  by a long-running script left as `main.py`, which blocks Thonny's Ctrl+C from
+  landing between loop iterations.
+- `mpremote connect /dev/ttyACM0` reliably breaks in where Thonny's interrupt
+  can't — useful fallback going forward.
+- Lesson reinforced: never leave a long-running loop as `main.py` while actively
+  developing; keep it under a different filename until ready to run unattended.
+- Also confirmed: Thonny holds an exclusive lock on the serial port while
+  connected — `mpremote` can't attach until Thonny disconnects (or its backend
+  process is killed).
+
+### GTK start/stop GUI (Pi 5)
+- Built a small GTK3 C++ app (Code::Blocks) with Start Radio / Stop Radio
+  buttons, wrapping `~/start-radio.sh` and `~/stop-radio.sh` via `system()`.
+- Required manually adding `pkg-config --cflags/--libs gtk+-3.0` output to
+  Code::Blocks' compiler/linker settings — not automatic.
+- Found `start-radio.sh` was missing `sudo` on all three `systemctl` calls
+  (inconsistent with `stop-radio.sh`, which had it) — fixed.
+- Set up passwordless sudo via `/etc/sudoers.d/radio-control`, scoped to the
+  exact six start/stop systemctl commands needed — avoids GUI hangs waiting on
+  a password prompt with no terminal to answer it.
+- Confirmed full stop/start loop working end-to-end against all three services.
+
+### now_playing.py (Pico 2 W, ST7735 display)
+- Confirmed `now_playing.py` (polls Pi 5 `/stations/{id}/nowplaying` every 10s)
+  works correctly when actively run via Thonny/mpremote, but need to formalize
+  running it as `main.py` for unattended operation.
+- **Bug 1 — ECONNRESET on repeated polls:** first poll after boot succeeded,
+  every poll after that failed with ECONNRESET, even though `curl` against the
+  same endpoint from the Pi 5 succeeded every time. Root cause: CYW43 WiFi
+  driver doesn't always release a closed socket immediately. Fixed with a
+  200ms delay after `s.close()` plus a retry-once wrapper
+  (`fetch_nowplaying_with_retry`) so a single transient reset doesn't flip the
+  display to "Poll failed".
+- **Bug 2 — stale "Poll failed" after recovery:** if the same track was still
+  playing before and after a stop/start cycle, the `title != last_title` check
+  suppressed the redraw, leaving "Poll failed" stuck on screen even though
+  polling had recovered. Fixed by tracking a `was_failing` flag that forces a
+  redraw on the first successful poll after any failure, regardless of whether
+  the title changed.
+- Both fixes validated against a real stop/start cycle via the GTK GUI.
+
+### Open for next session
+- **GUI has no user feedback.** Clicking Start/Stop gives no visual confirmation
+  it registered, and `system()` calls are fire-and-forget with no exit-code
+  check — the GUI doesn't actually know if the script succeeded. Needs a status
+  label (e.g. "Starting…" / "Radio running" / "Radio off") for immediate
+  feedback, decoupled from the ~10s it takes the Pico display to catch up.
+- Consider a less binary "Poll failed" state on the Pico display (e.g.
+  "Reconnecting…") since a normal stop/start cycle currently looks identical
+  to a genuine outage from the display alone.
+- `now_playing.py` still needs to be promoted to `main.py` (or equivalent) for
+  unattended boot — currently only tested via Thonny/mpremote sessions.
+
 ## Entry 13 — Pico display polls /nowplaying, fixes a socket leak
 
 **Goal:** get the Pico's bench-test square display (ST7735, framebuf-based driver) showing live
@@ -42,6 +101,8 @@ leak there would be more painful to debug than this quick metadata poll.
 "poll failed" and "station has no metadata support" (both currently just show a generic error line).
 
 Running record of what we build, why, and what we learned. Newest entry on top.
+
+
 
 ## Entry 12 — Remote access via Tailscale + web service hardened to systemd
 **Goal:** check the player page from away from home, safely, without exposing anything to the public internet.
